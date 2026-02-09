@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイ日記帳</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans JP', sans-serif; background: #f5f5f5; }
+        header { background: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+        .header-content { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        h1 { font-size: 24px; cursor: pointer; color: #333; }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .search-group { display: flex; gap: 5px; }
+        .btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.3s ease; }
+        .btn:hover { background: #f0f0f0; }
+        .btn-new { background: #4a90e2; color: white; border-color: #4a90e2; }
+        .btn-new:hover { background: #357abd; }
+        .btn-search { background: #4a90e2; color: white; border-color: #4a90e2; padding: 8px 12px; }
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; display: flex; gap: 30px; }
+        .main-content { flex: 1; min-width: 0; }
+        
+        .year-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .year-tab { padding: 10px 20px; background: white; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.3s ease; }
+        .year-tab:hover { border-color: #4a90e2; }
+        .year-tab.active { background: #4a90e2; color: white; border-color: #4a90e2; }
+        
+        .months-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 30px; }
+        .month-box { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-top: 4px solid; }
+        .month-box:nth-child(1) { border-top-color: #ff6b6b; }
+        .month-box:nth-child(2) { border-top-color: #ee5a6f; }
+        .month-box:nth-child(3) { border-top-color: #c44569; }
+        .month-box:nth-child(4) { border-top-color: #786fa6; }
+        .month-box:nth-child(5) { border-top-color: #4a69bd; }
+        .month-box:nth-child(6) { border-top-color: #0fbcf9; }
+        .month-box:nth-child(7) { border-top-color: #00d2d3; }
+        .month-box:nth-child(8) { border-top-color: #7bed9f; }
+        .month-box:nth-child(9) { border-top-color: #feca57; }
+        .month-box:nth-child(10) { border-top-color: #ff9ff3; }
+        .month-box:nth-child(11) { border-top-color: #ff6348; }
+        .month-box:nth-child(12) { border-top-color: #ff4757; }
+        
+        .month-header { font-size: 14px; font-weight: 600; margin-bottom: 12px; text-align: center; color: #333; }
+        .date-list { display: flex; flex-direction: column; gap: 6px; }
+        .date-item { padding: 6px 8px; background: #f9f9f9; border-radius: 4px; font-size: 11px; transition: all 0.3s ease; }
+        .date-item.has-entry { background: #e8f4ff; border-left: 3px solid #4a90e2; cursor: pointer; }
+        .date-item.has-entry:hover { background: #d0e8ff; transform: translateX(2px); }
+        .date-item.no-entry { background: #fafafa; color: #ccc; cursor: default; }
+        .date-label { font-weight: 500; font-size: 10px; }
+        .date-item.has-entry .date-label { color: #333; }
+        .date-item.no-entry .date-label { color: #ccc; }
+        .date-title { color: #333; margin-top: 2px; font-size: 11px; }
+        .show-more-btn { margin-top: 10px; padding: 6px; background: #f0f0f0; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 11px; transition: all 0.3s ease; }
+        .show-more-btn:hover { background: #e0e0e0; }
+        
+        .sidebar { width: 300px; position: sticky; top: 100px; height: fit-content; }
+        .sidebar-section { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .sidebar-title { font-size: 16px; font-weight: 600; margin-bottom: 15px; }
+        .profile { text-align: center; }
+        .profile-img { width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px; cursor: pointer; transition: all 0.3s ease; object-fit: cover; }
+        .profile-img:hover { transform: scale(1.05); }
+        .profile-name { font-size: 16px; font-weight: 600; margin-bottom: 5px; cursor: pointer; transition: color 0.3s ease; }
+        .profile-name:hover { color: #4a90e2; }
+        .profile-bio { font-size: 12px; color: #666; }
+        
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .calendar-nav button { background: none; border: none; cursor: pointer; font-size: 16px; padding: 5px; transition: color 0.3s ease; }
+        .calendar-nav button:hover { color: #4a90e2; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 4px; background: #f9f9f9; transition: all 0.3s ease; }
+        .calendar-day.has-entry { background: #4a90e2; color: white; font-weight: 600; cursor: pointer; }
+        .calendar-day.has-entry:hover { background: #357abd; }
+        .calendar-day.other-month { opacity: 0.3; cursor: default; }
+        
+        .entry-list { display: flex; flex-direction: column; gap: 10px; }
+        .entry-item { padding: 10px; background: #f9f9f9; border-radius: 4px; cursor: pointer; transition: all 0.3s ease; }
+        .entry-item:hover { background: #e8f4ff; transform: translateX(2px); }
+        .entry-date { font-size: 10px; color: #999; margin-bottom: 3px; }
+        .entry-title { font-size: 13px; color: #333; font-weight: 500; }
+        .view-more { display: block; text-align: center; padding: 10px; background: #f0f0f0; border-radius: 4px; color: #666; text-decoration: none; margin-top: 10px; font-size: 13px; cursor: pointer; transition: all 0.3s ease; }
+        .view-more:hover { background: #e0e0e0; }
+        
+        .page-container { background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .article-nav { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; }
+        .nav-link { padding: 10px 15px; background: #f0f0f0; border-radius: 4px; text-decoration: none; color: #333; font-size: 14px; transition: all 0.3s ease; }
+        .nav-link:hover { background: #e0e0e0; }
+        .article-header { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+        .article-title { font-size: 28px; font-weight: 600; margin-bottom: 10px; color: #333; }
+        .article-meta { display: flex; gap: 15px; color: #666; font-size: 14px; flex-wrap: wrap; align-items: center; }
+        .article-content { line-height: 1.8; font-size: 16px; margin-bottom: 30px; color: #333; }
+        .article-content p { margin-bottom: 15px; }
+        .article-content img { width: 100%; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .article-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+        .tag { padding: 5px 12px; background: #f0f0f0; border-radius: 20px; font-size: 12px; color: #666; }
+        
+        .comments-section { margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee; }
+        .comments-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
+        .comment-form textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical; min-height: 80px; margin-bottom: 10px; font-family: inherit; }
+        .comment-item { padding: 15px; background: #f9f9f9; border-radius: 4px; margin-bottom: 10px; }
+        .comment-meta { color: #999; font-size: 12px; margin-bottom: 5px; }
+        .comment-text { color: #333; font-size: 14px; line-height: 1.6; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit; }
+        .form-group textarea { min-height: 200px; resize: vertical; line-height: 1.6; }
+        .form-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .image-preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .image-preview-item { position: relative; width: 100px; height: 100px; }
+        .image-preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .image-remove { position: absolute; top: -5px; right: -5px; background: #ff4757; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1; }
+        
+        .articles-list { display: flex; flex-direction: column; gap: 20px; }
+        .article-card { background: white; border-radius: 8px; padding: 20px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.3s ease; }
+        .article-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.15); transform: translateY(-2px); }
+        .article-thumbnail { width: 120px; height: 120px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+        .article-info { flex: 1; min-width: 0; }
+        .article-list-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #333; }
+        .article-excerpt { font-size: 14px; color: #666; margin-bottom: 8px; }
+        
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 30px; flex-wrap: wrap; }
+        .page-btn { min-width: 35px; height: 35px; padding: 0 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer; transition: all 0.3s ease; }
+        .page-btn:hover { background: #f0f0f0; }
+        .page-btn.active { background: #4a90e2; color: white; border-color: #4a90e2; }
+        
+        .profile-content { display: flex; gap: 40px; margin-bottom: 30px; flex-wrap: wrap; }
+        .profile-image-section { text-align: center; }
+        .profile-large-img { width: 200px; height: 200px; border-radius: 50%; margin-bottom: 15px; object-fit: cover; }
+        .profile-details { flex: 1; min-width: 300px; }
+        .profile-name-large { font-size: 24px; font-weight: 600; margin-bottom: 20px; }
+        .profile-item { display: flex; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .profile-label { width: 140px; color: #666; font-weight: 500; }
+        .profile-value { flex: 1; color: #333; }
+        
+        .hidden { display: none !important; }
+        
+        @media (max-width: 1200px) {
+            .months-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; position: static; }
+            .months-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1 onclick="showDashboard()">マイ日記帳</h1>
+            <div class="header-actions">
+                <div class="search-group">
+                    <input type="text" id="searchInput" placeholder="記事を検索..." style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 180px;">
+                    <button class="btn btn-search" onclick="searchArticles()">🔍 検索</button>
+                </div>
+                <button class="btn btn-new" onclick="showNewArticle()">✏️ 新規記事</button>
+                <button class="btn" onclick="exportData()">エクスポート</button>
+                <button class="btn" onclick="importData()">インポート</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main class="main-content">
+            <div id="dashboard"></div>
+            <div id="articlePage" class="hidden"></div>
+            <div id="editPage" class="hidden"></div>
+            <div id="listPage" class="hidden"></div>
+            <div id="profilePage" class="hidden"></div>
+        </main>
+
+        <aside class="sidebar">
+            <div class="sidebar-section profile">
+                <img src="https://via.placeholder.com/100" alt="Profile" class="profile-img" onclick="showProfilePage()">
+                <div class="profile-name" onclick="showProfilePage()">山田 花子</div>
+                <div class="profile-bio">毎日を大切に記録しています</div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">アーカイブ</div>
+                <div class="calendar-header">
+                    <span id="calendarMonth"></span>
+                    <div class="calendar-nav">
+                        <button onclick="prevMonth()">◀</button>
+                        <button onclick="nextMonth()">▶</button>
+                    </div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">New Entry</div>
+                <div class="entry-list" id="newEntryList"></div>
+                <div class="view-more" onclick="showArticlesList()">View More</div>
+            </div>
+        </aside>
+    </div>
+
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+
+    <script>
+        let articles = {};
+        let profile = {
+            name: '山田 花子',
+            birthday: '1995-05-15',
+            bloodType: 'A',
+            zodiac: 'おうし座',
+            height: '160',
+            photo: 'https://via.placeholder.com/200',
+            custom: [
+                { label: '趣味', value: '読書、音楽鑑賞' },
+                { label: '好きな食べ物', value: 'イチゴ' },
+                { label: '座右の銘', value: '一期一会' }
+            ]
+        };
+        let currentYear = 2026;
+        let currentMonth = 0;
+        let editImages = [];
+        let editThumbnail = '';
+        let editBlocks = []; // ブロックエディタ用
+        
+        // サンプルデータ生成関数
+        function generateSampleData() {
+            const titles = [
+                '新年の抱負', '今日のカフェ巡り', '友達とランチ', '週末の過ごし方', 
+                '映画鑑賞の感想', '美術館に行ってきた', 'お気に入りのカフェ', '今日の料理',
+                'ヨガ始めました', '桜が綺麗だった', '新しい趣味発見', '読書の記録',
+                '音楽を聴きながら', '散歩日和', 'ショッピング日記', '今日の気分',
+                '思い出の写真', '季節の変わり目', '幸せな一日', '小さな発見',
+                '日常の風景', '癒しの時間', '大切な時間', '心に残る出来事',
+                '今日のありがとう', '素敵な出会い', '新しい挑戦', '自分磨き',
+                'リフレッシュ', '穏やかな時間', '充実の一日', '楽しい予定',
+                '思わぬ発見', '心温まる出来事', '今年の目標', '変化の兆し',
+                '前向きな気持ち', '感謝の気持ち', '明日への期待', '今日も頑張った'
+            ];
+            
+            const contents = [
+                '今日はとても良い天気でした。朝から気分が良くて、いつもより早起きできました。朝食もゆっくり楽しめて、幸せな一日の始まりです。\n\nこんな日は外に出かけたくなりますね。近所を散歩しながら、季節の変化を感じることができました。小さな幸せを見つけられる日々に感謝です。',
+                '久しぶりに友達と会って、たくさん話をしました。お互いの近況を報告し合って、昔話にも花が咲きました。\n\nこういう時間って本当に大切だなと改めて感じました。また近いうちに会う約束をして、今日は楽しい一日でした。',
+                '新しいことに挑戦してみました。最初は不安もありましたが、やってみると意外と楽しくて、もっと続けたいと思いました。\n\n何事もやってみないとわからないものですね。これからも色々なことにチャレンジしていきたいです。'
+            ];
+            
+            const categories = ['日常', 'お出かけ', '趣味', '食事', '友達', '仕事', '健康'];
+            const tagsList = [
+                ['日常', '思い出'],
+                ['カフェ', 'グルメ'],
+                ['友達', '楽しい'],
+                ['趣味', '新発見'],
+                ['映画', 'エンタメ'],
+                ['アート', '美術館'],
+                ['料理', '手作り'],
+                ['健康', '運動'],
+                ['読書', '本'],
+                ['音楽', 'リラックス']
+            ];
+            
+            // 2026年のデータ（30件）
+            const dates2026 = [
+                // 1月: 8件
+                '2026-01-01', '2026-01-03', '2026-01-05', '2026-01-08', 
+                '2026-01-10', '2026-01-15', '2026-01-18', '2026-01-25',
+                // 2月: 7件
+                '2026-02-02', '2026-02-05', '2026-02-08', '2026-02-10', 
+                '2026-02-14', '2026-02-20', '2026-02-28',
+                // 3月: 5件
+                '2026-03-03', '2026-03-08', '2026-03-12', '2026-03-18', '2026-03-25',
+                // 4月: 3件
+                '2026-04-05', '2026-04-12', '2026-04-20',
+                // 5月: 3件
+                '2026-05-03', '2026-05-15', '2026-05-28',
+                // 6月: 2件
+                '2026-06-10', '2026-06-22',
+                // 7月: 2件
+                '2026-07-07', '2026-07-21'
+            ];
+            
+            // 2025年のデータ（10件）
+            const dates2025 = [
+                // 12月: 5件
+                '2025-12-03', '2025-12-10', '2025-12-15', '2025-12-25', '2025-12-31',
+                // 11月: 3件
+                '2025-11-05', '2025-11-15', '2025-11-28',
+                // 10月: 2件
+                '2025-10-10', '2025-10-25'
+            ];
+            
+            const allDates = [...dates2026, ...dates2025];
+            
+            allDates.forEach((date, i) => {
+                const hour = 9 + Math.floor(Math.random() * 12);
+                const minute = Math.floor(Math.random() * 60);
+                const timestamp = new Date(date + `T${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}:00`).getTime();
+                
+                articles[date] = {
+                    title: titles[i % titles.length],
+                    content: contents[i % contents.length],
+                    timestamp: timestamp,
+                    images: [
+                        `https://picsum.photos/800/600?random=${i}a`,
+                        `https://picsum.photos/800/600?random=${i}b`
+                    ],
+                    thumbnail: `https://picsum.photos/400/400?random=${i}`,
+                    tags: tagsList[i % tagsList.length],
+                    category: categories[i % categories.length],
+                    status: 'published',
+                    comments: (i % 5 === 0) ? [{
+                        text: 'この日のことは今でも覚えています。素敵な一日でしたね。',
+                        timestamp: timestamp + 3600000
+                    }] : []
+                };
+            });
+            
+            console.log('サンプルデータを生成しました:', Object.keys(articles).length, '件');
+        }
+        
+        // 初期化
+        function init() {
+            console.log('初期化開始...');
+            
+            // ローカルストレージからデータを読み込み
+            const storedArticles = localStorage.getItem('diary_articles');
+            const storedProfile = localStorage.getItem('diary_profile');
+            
+            if (storedArticles) {
+                articles = JSON.parse(storedArticles);
+                console.log('既存データを読み込みました:', Object.keys(articles).length, '件');
+            } else {
+                // データがない場合のみサンプルデータを生成
+                console.log('データがないため、サンプルデータを生成します');
+                generateSampleData();
+                saveData();
+            }
+            
+            if (storedProfile) {
+                profile = JSON.parse(storedProfile);
+            }
+            
+            // 画面を描画
+            renderDashboard();
+            renderCalendar();
+            renderNewEntry();
+            
+            console.log('初期化完了');
+        }
+        
+        // ダッシュボード表示
+        function renderDashboard() {
+            console.log('ダッシュボード描画開始...');
+            const years = [2026, 2025, 2024];
+            let html = '<div class="year-tabs">';
+            html += years.map(y => 
+                `<div class="year-tab ${y === currentYear ? 'active' : ''}" onclick="changeYear(${y})">${y}</div>`
+            ).join('');
+            html += '<div class="year-tab" style="border-style: dashed;" onclick="addYear()">+ 年を追加</div>';
+            html += '</div>';
+            
+            html += '<div class="months-grid">';
+            const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+            
+            for (let m = 1; m <= 12; m++) {
+                const daysInMonth = new Date(currentYear, m, 0).getDate();
+                const allDays = [];
+                
+                // その月のすべての日付を生成
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateKey = `${currentYear}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const art = articles[dateKey];
+                    allDays.push({
+                        date: dateKey,
+                        day: d,
+                        article: art,
+                        hasEntry: art && art.status === 'published'
+                    });
+                }
+                
+                const display5 = allDays.slice(0, 5);
+                const hasMore = allDays.length > 5;
+                
+                html += `<div class="month-box">`;
+                html += `<div class="month-header">${monthNames[m-1]}</div>`;
+                html += `<div class="date-list" id="month-list-${m}">`;
+                
+                // 最初の5日を表示
+                display5.forEach(({ date, day, article, hasEntry }) => {
+                    const d = new Date(date);
+                    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+                    
+                    if (hasEntry) {
+                        const isDraft = article.status === 'draft';
+                        const bgColor = isDraft ? 'background: #fff9e6; border-left-color: #feca57;' : '';
+                        const icon = isDraft ? '📝 ' : '';
+                        html += `<div class="date-item has-entry" style="${bgColor}" onclick="showArticle('${date}')">`;
+                        html += `<div class="date-label">${day}日(${dow})</div>`;
+                        html += `<div class="date-title">${icon}${article.title}</div>`;
+                        html += `</div>`;
+                    } else {
+                        html += `<div class="date-item no-entry">`;
+                        html += `<div class="date-label">${day}日(${dow})</div>`;
+                        html += `</div>`;
+                    }
+                });
+                
+                html += '</div>';
+                
+                // もっと見るボタンと追加日付
+                if (hasMore) {
+                    html += `<div class="date-list hidden" id="month-extra-${m}">`;
+                    allDays.slice(5).forEach(({ date, day, article, hasEntry }) => {
+                        const d = new Date(date);
+                        const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+                        
+                        if (hasEntry) {
+                            const isDraft = article.status === 'draft';
+                            const bgColor = isDraft ? 'background: #fff9e6; border-left-color: #feca57;' : '';
+                            const icon = isDraft ? '📝 ' : '';
+                            html += `<div class="date-item has-entry" style="${bgColor}" onclick="showArticle('${date}')">`;
+                            html += `<div class="date-label">${day}日(${dow})</div>`;
+                            html += `<div class="date-title">${icon}${article.title}</div>`;
+                            html += `</div>`;
+                        } else {
+                            html += `<div class="date-item no-entry">`;
+                            html += `<div class="date-label">${day}日(${dow})</div>`;
+                            html += `</div>`;
+                        }
+                    });
+                    html += '</div>';
+                    html += `<button class="show-more-btn" id="month-btn-${m}" onclick="toggleMonth(${m})">▼ もっと見る</button>`;
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            document.getElementById('dashboard').innerHTML = html;
+            console.log('ダッシュボード描画完了');
+        }
+        
+        // 月の展開/折りたたみ
+        function toggleMonth(m) {
+            const extra = document.getElementById(`month-extra-${m}`);
+            const btn = document.getElementById(`month-btn-${m}`);
+            if (extra.classList.contains('hidden')) {
+                extra.classList.remove('hidden');
+                btn.textContent = '▲ 閉じる';
+            } else {
+                extra.classList.add('hidden');
+                btn.textContent = '▼ もっと見る';
+            }
+        }
+        
+        // 年の変更
+        function changeYear(y) {
+            currentYear = y;
+            renderDashboard();
+        }
+        
+        // 年の追加
+        function addYear() {
+            const y = prompt('追加する年を入力してください（例: 2027）:');
+            if (y && !isNaN(y)) {
+                currentYear = parseInt(y);
+                renderDashboard();
+            }
+        }
+        
+        // 新規記事作成
+        function showNewArticle() {
+            const today = new Date();
+            const dateKey = today.getFullYear() + '-' + 
+                           String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+                           String(today.getDate()).padStart(2, '0');
+            showEditPage(dateKey, true);
+        }
+        
+        // 編集ページ表示
+        function showEditPage(date, isNew) {
+            const art = isNew ? {
+                title: '',
+                content: '',
+                category: '日常',
+                tags: [],
+                images: [],
+                thumbnail: '',
+                blocks: [] // 新方式
+            } : articles[date];
+            
+            // ブロック初期化
+            if (art.blocks && art.blocks.length > 0) {
+                // 新方式: ブロックをそのまま使用
+                editBlocks = JSON.parse(JSON.stringify(art.blocks));
+            } else if (art.content || (art.images && art.images.length > 0)) {
+                // 旧方式: contentとimagesをブロックに変換
+                editBlocks = [];
+                if (art.content) {
+                    editBlocks.push({ type: 'text', content: art.content });
+                }
+                if (art.images && art.images.length > 0) {
+                    art.images.forEach(img => {
+                        editBlocks.push({ type: 'image', data: img });
+                    });
+                }
+            } else {
+                // 完全に新規: 空のテキストブロックで開始
+                editBlocks = [{ type: 'text', content: '' }];
+            }
+            
+            editImages = art.images ? [...art.images] : [];
+            editThumbnail = art.thumbnail || '';
+            
+            let html = '<div class="page-container">';
+            html += '<h2>' + (isNew ? '新規記事作成' : '記事を編集') + '</h2>';
+            
+            html += '<div class="form-group">';
+            html += '<label>日付 *</label>';
+            html += '<input type="date" id="editDate" value="' + date + '">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>タイトル *</label>';
+            html += '<input type="text" id="editTitle" value="' + art.title + '" placeholder="タイトルを入力...">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>本文と画像（ブロック形式）</label>';
+            html += '<div id="blocksContainer" style="margin-top: 10px;"></div>';
+            html += '<div style="margin-top: 15px; display: flex; gap: 10px;">';
+            html += '<button type="button" class="btn" onclick="addTextBlock()">➕ テキストブロック追加</button>';
+            html += '<button type="button" class="btn" onclick="addImageBlock()">🖼️ 画像ブロック追加</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>カテゴリー</label>';
+            html += '<select id="editCategory">';
+            ['日常', 'お出かけ', '趣味', '食事', '友達', '仕事', '健康'].forEach(cat => {
+                html += '<option value="' + cat + '"' + (art.category === cat ? ' selected' : '') + '>' + cat + '</option>';
+            });
+            html += '</select>';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>タグ（カンマ区切り）</label>';
+            html += '<input type="text" id="editTags" value="' + (art.tags || []).join(', ') + '" placeholder="例: 日常, 思い出">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>サムネイル画像</label>';
+            html += '<input type="file" id="thumbnailFile" accept="image/*" onchange="handleThumbnailUpload(event)">';
+            html += '<div id="thumbnailPreview" style="margin-top:10px;"></div>';
+            html += '</div>';
+            
+            html += '<div class="form-actions">';
+            html += '<button class="btn btn-new" onclick="saveArticle(\'' + date + '\', ' + isNew + ', \'published\')">💾 保存して公開</button>';
+            html += '<button class="btn" style="background: #feca57; color: #333; border-color: #feca57;" onclick="saveArticle(\'' + date + '\', ' + isNew + ', \'draft\')">📝 下書き保存</button>';
+            html += '<button class="btn" onclick="showDashboard()">キャンセル</button>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            document.getElementById('editPage').innerHTML = html;
+            renderBlocks();
+            updateThumbnailPreview();
+            showPage('editPage');
+        }
+        
+        // ブロック描画
+        function renderBlocks() {
+            const container = document.getElementById('blocksContainer');
+            if (!container) return;
+            
+            // 既存のテキストエリアの内容を保存
+            const textareas = document.querySelectorAll('[data-block-idx]');
+            textareas.forEach((textarea) => {
+                const blockIdx = parseInt(textarea.getAttribute('data-block-idx'));
+                if (editBlocks[blockIdx] && editBlocks[blockIdx].type === 'text') {
+                    editBlocks[blockIdx].content = textarea.value;
+                }
+            });
+            
+            container.innerHTML = '';
+            
+            editBlocks.forEach((block, idx) => {
+                const blockDiv = document.createElement('div');
+                blockDiv.style.cssText = 'background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 2px solid #e0e0e0;';
+                
+                let blockHTML = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">';
+                blockHTML += '<strong>' + (block.type === 'text' ? '📝 テキストブロック' : '🖼️ 画像ブロック') + '</strong>';
+                blockHTML += '<div style="display: flex; gap: 5px;">';
+                if (idx > 0) {
+                    blockHTML += '<button type="button" class="btn" onclick="moveBlockUp(' + idx + ')" style="padding: 5px 10px; font-size: 12px;">↑</button>';
+                }
+                if (idx < editBlocks.length - 1) {
+                    blockHTML += '<button type="button" class="btn" onclick="moveBlockDown(' + idx + ')" style="padding: 5px 10px; font-size: 12px;">↓</button>';
+                }
+                blockHTML += '<button type="button" class="btn" onclick="removeBlock(' + idx + ')" style="padding: 5px 10px; font-size: 12px; background: #ff4757; color: white; border-color: #ff4757;">削除</button>';
+                blockHTML += '</div></div>';
+                
+                if (block.type === 'text') {
+                    blockHTML += '<textarea data-block-idx="' + idx + '" style="width: 100%; min-height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="テキストを入力...">' + (block.content || '') + '</textarea>';
+                } else if (block.type === 'image') {
+                    if (block.data) {
+                        blockHTML += '<img src="' + block.data + '" style="max-width: 100%; height: auto; border-radius: 4px; margin-top: 10px;">';
+                    } else {
+                        blockHTML += '<input type="file" accept="image/*" onchange="handleBlockImageUpload(event, ' + idx + ')" style="margin-top: 10px;">';
+                    }
+                }
+                
+                blockDiv.innerHTML = blockHTML;
+                container.appendChild(blockDiv);
+            });
+        }
+        
+        // テキストブロック追加
+        function addTextBlock() {
+            editBlocks.push({ type: 'text', content: '' });
+            renderBlocks();
+        }
+        
+        // 画像ブロック追加
+        function addImageBlock() {
+            editBlocks.push({ type: 'image', data: '' });
+            renderBlocks();
+        }
+        
+        // ブロック削除
+        function removeBlock(idx) {
+            if (confirm('このブロックを削除しますか？')) {
+                editBlocks.splice(idx, 1);
+                if (editBlocks.length === 0) {
+                    editBlocks.push({ type: 'text', content: '' });
+                }
+                renderBlocks();
+            }
+        }
+        
+        // ブロック上移動
+        function moveBlockUp(idx) {
+            if (idx > 0) {
+                [editBlocks[idx], editBlocks[idx - 1]] = [editBlocks[idx - 1], editBlocks[idx]];
+                renderBlocks();
+            }
+        }
+        
+        // ブロック下移動
+        function moveBlockDown(idx) {
+            if (idx < editBlocks.length - 1) {
+                [editBlocks[idx], editBlocks[idx + 1]] = [editBlocks[idx + 1], editBlocks[idx]];
+                renderBlocks();
+            }
+        }
+        
+        // ブロック画像アップロード
+        function handleBlockImageUpload(event, idx) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editBlocks[idx].data = e.target.result;
+                renderBlocks();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // サムネイルアップロード処理
+        function handleThumbnailUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editThumbnail = e.target.result;
+                updateThumbnailPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // サムネイルプレビュー更新
+        function updateThumbnailPreview() {
+            const preview = document.getElementById('thumbnailPreview');
+            if (!preview) return;
+            if (editThumbnail) {
+                preview.innerHTML = '<img src="' + editThumbnail + '" style="width:120px;height:120px;object-fit:cover;border-radius:4px;">';
+            } else {
+                preview.innerHTML = '';
+            }
+        }
+        
+        // 記事保存
+        function saveArticle(originalDate, isNew, saveStatus) {
+            const newDate = document.getElementById('editDate').value;
+            const title = document.getElementById('editTitle').value.trim();
+            
+            if (!newDate || !title) {
+                alert('日付、タイトルは必須です');
+                return;
+            }
+            
+            // 同じ日付に既に記事がある場合の確認
+            if (articles[newDate] && newDate !== originalDate) {
+                const existingArticle = articles[newDate];
+                const statusText = existingArticle.status === 'draft' ? '下書き' : '記事';
+                
+                if (saveStatus === 'draft') {
+                    // 下書き保存の場合、既存の下書きを開く
+                    alert('この日付には既に' + statusText + 'があります。編集画面を開きます。');
+                    showEditPage(newDate, false);
+                    return;
+                } else {
+                    // 公開の場合、上書き確認
+                    if (!confirm('この日付には既に' + statusText + 'があります。上書きしますか？')) {
+                        return;
+                    }
+                }
+            }
+            
+            // ブロックからデータを収集
+            const textareas = document.querySelectorAll('[data-block-idx]');
+            textareas.forEach((textarea, idx) => {
+                const blockIdx = parseInt(textarea.getAttribute('data-block-idx'));
+                if (editBlocks[blockIdx] && editBlocks[blockIdx].type === 'text') {
+                    editBlocks[blockIdx].content = textarea.value;
+                }
+            });
+            
+            // 空のブロックを削除
+            const validBlocks = editBlocks.filter(block => {
+                if (block.type === 'text') return block.content.trim() !== '';
+                if (block.type === 'image') return block.data !== '';
+                return false;
+            });
+            
+            if (validBlocks.length === 0) {
+                alert('本文または画像を入力してください');
+                return;
+            }
+            
+            const category = document.getElementById('editCategory').value;
+            const tags = document.getElementById('editTags').value
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            
+            // 日付が変更された場合、元の記事を削除
+            if (originalDate !== newDate && articles[originalDate]) {
+                delete articles[originalDate];
+            }
+            
+            // サムネイル自動設定（最初の画像ブロック）
+            if (!editThumbnail) {
+                const firstImageBlock = validBlocks.find(b => b.type === 'image');
+                if (firstImageBlock) {
+                    editThumbnail = firstImageBlock.data;
+                }
+            }
+            
+            // 記事を保存（新方式）
+            articles[newDate] = {
+                title,
+                blocks: validBlocks,
+                timestamp: (articles[originalDate] && !isNew) ? articles[originalDate].timestamp : Date.now(),
+                category,
+                tags,
+                thumbnail: editThumbnail,
+                status: saveStatus || 'published',
+                comments: (articles[originalDate] && !isNew) ? articles[originalDate].comments : [],
+                // 後方互換性のため保持
+                content: validBlocks.filter(b => b.type === 'text').map(b => b.content).join('\n\n'),
+                images: validBlocks.filter(b => b.type === 'image').map(b => b.data)
+            };
+            
+            saveData();
+            renderDashboard();
+            renderNewEntry();
+            showArticle(newDate);
+        }
+        
+        // 記事表示
+        function showArticle(date) {
+            const art = articles[date];
+            if (!art) {
+                if (confirm(`${date}の記事を作成しますか？`)) {
+                    showEditPage(date, true);
+                }
+                return;
+            }
+            
+            // 前後の記事を取得
+            const all = Object.keys(articles)
+                .filter(d => articles[d].status === 'published')
+                .sort();
+            const idx = all.indexOf(date);
+            const prev = idx > 0 ? all[idx - 1] : null;
+            const next = idx < all.length - 1 ? all[idx + 1] : null;
+            
+            let html = '<div class="page-container">';
+            
+            // ナビゲーション
+            html += '<div class="article-nav">';
+            if (prev) {
+                html += `<a href="javascript:void(0)" class="nav-link" onclick="showArticle('${prev}')">← ${articles[prev].title}</a>`;
+            } else {
+                html += '<div></div>';
+            }
+            html += `<a href="javascript:void(0)" class="nav-link" onclick="showDashboard()">戻る</a>`;
+            if (next) {
+                html += `<a href="javascript:void(0)" class="nav-link" onclick="showArticle('${next}')">${articles[next].title} →</a>`;
+            } else {
+                html += '<div></div>';
+            }
+            html += '</div>';
+            
+            // 記事ヘッダー
+            html += '<div class="article-header">';
+            if (art.status === 'draft') {
+                html += '<div style="display: inline-block; background: #fff9e6; color: #f39c12; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px;">📝 下書き</div>';
+            }
+            html += '<h2 class="article-title">' + art.title + '</h2>';
+            html += '<div class="article-meta">';
+            html += '<span>📅 記事日付: ' + date + '</span>';
+            html += '<span>🕒 投稿日時: ' + new Date(art.timestamp).toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) + '</span>';
+            html += '<span>📁 ' + art.category + '</span>';
+            html += '<button class="btn" onclick="showEditPage(\'' + date + '\', false)">✏️ 編集</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // 記事本文
+            html += '<div class="article-content">';
+            
+            // 新方式（ブロック）で表示
+            if (art.blocks && art.blocks.length > 0) {
+                art.blocks.forEach(block => {
+                    if (block.type === 'text') {
+                        html += block.content.split('\n').map(p => '<p>' + p + '</p>').join('');
+                    } else if (block.type === 'image' && block.data) {
+                        html += '<img src="' + block.data + '">';
+                    }
+                });
+            } else {
+                // 旧方式（既存40件用）
+                html += art.content.split('\n').map(p => '<p>' + p + '</p>').join('');
+                
+                // 画像
+                if (art.images && art.images.length > 0) {
+                    html += art.images.map(img => '<img src="' + img + '">').join('');
+                }
+            }
+            
+            // タグ
+            if (art.tags && art.tags.length > 0) {
+                html += '<div class="article-tags">';
+                html += art.tags.map(t => '<span class="tag">#' + t + '</span>').join('');
+                html += '</div>';
+            }
+            html += '</div>';
+            
+            // コメントセクション
+            html += '<div class="comments-section">';
+            html += '<h3 class="comments-title">💬 コメント</h3>';
+            html += '<div class="comment-form">';
+            html += '<textarea id="commentText" placeholder="コメントを入力..."></textarea>';
+            html += '<button class="btn" onclick="addComment(\'' + date + '\')">コメントを投稿</button>';
+            html += '</div>';
+            
+            if (art.comments && art.comments.length > 0) {
+                html += art.comments.map(c => 
+                    '<div class="comment-item">' +
+                    '<div class="comment-meta">' + new Date(c.timestamp).toLocaleString('ja-JP') + '</div>' +
+                    '<div class="comment-text">' + c.text + '</div>' +
+                    '</div>'
+                ).join('');
+            }
+            
+            html += '</div>';
+            html += '</div>';
+            
+            document.getElementById('articlePage').innerHTML = html;
+            showPage('articlePage');
+        }
+        
+        // コメント追加
+        function addComment(date) {
+            const text = document.getElementById('commentText').value.trim();
+            if (!text) {
+                alert('コメントを入力してください');
+                return;
+            }
+            
+            if (!articles[date].comments) {
+                articles[date].comments = [];
+            }
+            
+            articles[date].comments.push({
+                text: text,
+                timestamp: Date.now()
+            });
+            
+            saveData();
+            showArticle(date);
+        }
+        
+        // 記事一覧表示（検索結果対応版）
+        let searchQuery = ''; // グローバル変数で検索キーワードを保持
+        
+        function showArticlesList(page = 1, query = '') {
+            searchQuery = query; // 検索キーワードを保存
+            
+            let all = Object.entries(articles)
+                .filter(([_, a]) => a.status === 'published');
+            
+            // 検索キーワードがある場合はフィルタリング
+            if (query) {
+                all = all.filter(([_, a]) => 
+                    a.title.toLowerCase().includes(query.toLowerCase()) || 
+                    a.content.toLowerCase().includes(query.toLowerCase()) || 
+                    (a.tags && a.tags.some(t => t.toLowerCase().includes(query.toLowerCase())))
+                );
+            }
+            
+            all = all.sort((a, b) => b[0].localeCompare(a[0]));
+            
+            const perPage = 10;
+            const total = Math.ceil(all.length / perPage);
+            const items = all.slice((page - 1) * perPage, page * perPage);
+            
+            let html = '<div class="page-container">';
+            const title = query ? `検索結果: "${query}"` : 'すべての記事';
+            html += '<h2 style="font-size: 24px; margin-bottom: 30px;">' + title + '</h2>';
+            
+            if (all.length === 0) {
+                html += '<div style="text-align: center; padding: 40px; color: #999;">該当する記事が見つかりませんでした</div></div>';
+                document.getElementById('listPage').innerHTML = html;
+                showPage('listPage');
+                return;
+            }
+            html += '<div class="articles-list">';
+            
+            items.forEach(([date, art]) => {
+                const excerpt = art.content.substring(0, 100) + (art.content.length > 100 ? '...' : '');
+                html += `<div class="article-card" onclick="showArticle('${date}')">`;
+                html += `<img src="${art.thumbnail || 'https://via.placeholder.com/120'}" class="article-thumbnail">`;
+                html += '<div class="article-info">';
+                html += '<h3 class="article-list-title">' + art.title + '</h3>';
+                html += '<div class="article-excerpt">' + excerpt + '</div>';
+                html += '<div class="article-meta">';
+                html += '<span>📅 ' + date + '</span>'; // 指定日付を表示
+                html += '<span>📁 ' + art.category + '</span>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            // ページネーション
+            if (total > 1) {
+                html += '<div class="pagination">';
+                for (let p = 1; p <= total; p++) {
+                    html += `<button class="page-btn ${p === page ? 'active' : ''}" onclick="showArticlesList(${p}, '${query}')">${p}</button>`;
+                }
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('listPage').innerHTML = html;
+            showPage('listPage');
+        }
+        
+        // プロフィールページ表示
+        function showProfilePage() {
+            console.log('プロフィールページを表示します');
+            
+            let html = '<div class="page-container">';
+            html += '<h2 style="text-align:center;margin-bottom:30px;">プロフィール</h2>';
+            html += '<div class="profile-content">';
+            
+            // プロフィール画像セクション
+            html += '<div class="profile-image-section">';
+            html += '<img src="' + profile.photo + '" class="profile-large-img">';
+            html += '<button class="btn" onclick="editProfile()">編集</button>';
+            html += '</div>';
+            
+            // プロフィール詳細
+            html += '<div class="profile-details">';
+            html += '<h3 class="profile-name-large">' + profile.name + '</h3>';
+            
+            html += '<div class="profile-item">';
+            html += '<div class="profile-label">Birthday</div>';
+            html += '<div class="profile-value">' + new Date(profile.birthday).toLocaleDateString('ja-JP') + '</div>';
+            html += '</div>';
+            
+            html += '<div class="profile-item">';
+            html += '<div class="profile-label">Blood type</div>';
+            html += '<div class="profile-value">' + profile.bloodType + '</div>';
+            html += '</div>';
+            
+            html += '<div class="profile-item">';
+            html += '<div class="profile-label">星座</div>';
+            html += '<div class="profile-value">' + profile.zodiac + '</div>';
+            html += '</div>';
+            
+            html += '<div class="profile-item">';
+            html += '<div class="profile-label">身長</div>';
+            html += '<div class="profile-value">' + profile.height + 'cm</div>';
+            html += '</div>';
+            
+            // カスタム項目
+            if (profile.custom && profile.custom.length > 0) {
+                profile.custom.forEach(item => {
+                    html += '<div class="profile-item">';
+                    html += '<div class="profile-label">' + item.label + '</div>';
+                    html += '<div class="profile-value">' + item.value + '</div>';
+                    html += '</div>';
+                });
+            }
+            
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            document.getElementById('profilePage').innerHTML = html;
+            showPage('profilePage');
+        }
+        
+        // プロフィール編集画面表示
+        let editProfilePhoto = ''; // 編集中のプロフィール写真を保持
+        
+        function editProfile() {
+            editProfilePhoto = profile.photo; // 現在の写真をセット
+            
+            let html = '<div class="page-container">';
+            html += '<h2 style="text-align:center;margin-bottom:30px;">プロフィール編集</h2>';
+            
+            html += '<div class="form-group">';
+            html += '<label>プロフィール写真</label>';
+            html += '<input type="file" id="editPhotoFile" accept="image/*" onchange="handleProfilePhotoUpload(event)">';
+            html += '<div id="profilePhotoPreview" style="margin-top: 10px;"></div>';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>名前 *</label>';
+            html += '<input type="text" id="editName" value="' + profile.name + '" placeholder="名前を入力">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>誕生日</label>';
+            html += '<input type="date" id="editBirthday" value="' + profile.birthday + '">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>血液型</label>';
+            html += '<select id="editBloodType">';
+            ['A', 'B', 'O', 'AB'].forEach(type => {
+                html += '<option value="' + type + '"' + (profile.bloodType === type ? ' selected' : '') + '>' + type + '</option>';
+            });
+            html += '</select>';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>星座</label>';
+            html += '<input type="text" id="editZodiac" value="' + profile.zodiac + '" placeholder="例: おうし座">';
+            html += '</div>';
+            
+            html += '<div class="form-group">';
+            html += '<label>身長（cm）</label>';
+            html += '<input type="number" id="editHeight" value="' + profile.height + '" placeholder="例: 160">';
+            html += '</div>';
+            
+            html += '<h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 18px;">カスタム項目</h3>';
+            html += '<div id="customFieldsContainer">';
+            
+            // 既存のカスタム項目
+            if (profile.custom && profile.custom.length > 0) {
+                profile.custom.forEach((item, idx) => {
+                    html += '<div class="custom-field-item" style="display: flex; gap: 10px; margin-bottom: 10px;">';
+                    html += '<input type="text" placeholder="項目名" value="' + item.label + '" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" data-custom-label="' + idx + '">';
+                    html += '<input type="text" placeholder="内容" value="' + item.value + '" style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" data-custom-value="' + idx + '">';
+                    html += '<button class="btn" onclick="removeCustomField(' + idx + ')" style="background: #ff4757; color: white; border-color: #ff4757;">削除</button>';
+                    html += '</div>';
+                });
+            }
+            
+            html += '</div>';
+            html += '<button class="btn" onclick="addCustomField()" style="margin-top: 10px;">+ カスタム項目を追加</button>';
+            
+            html += '<div class="form-actions" style="margin-top: 30px;">';
+            html += '<button class="btn btn-new" onclick="saveProfile()">💾 保存</button>';
+            html += '<button class="btn" onclick="showProfilePage()">キャンセル</button>';
+            html += '</div>';
+            
+            html += '</div>';
+            
+            document.getElementById('profilePage').innerHTML = html;
+            updateProfilePhotoPreview(); // プレビューを表示
+            showPage('profilePage');
+        }
+        
+        // プロフィール写真アップロード処理
+        function handleProfilePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editProfilePhoto = e.target.result;
+                updateProfilePhotoPreview();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // プロフィール写真プレビュー更新
+        function updateProfilePhotoPreview() {
+            const preview = document.getElementById('profilePhotoPreview');
+            if (!preview) return;
+            
+            if (editProfilePhoto) {
+                preview.innerHTML = '<img src="' + editProfilePhoto + '" style="width:150px;height:150px;object-fit:cover;border-radius:50%;">';
+            } else {
+                preview.innerHTML = '';
+            }
+        }
+        
+        // カスタムフィールド追加
+        function addCustomField() {
+            const container = document.getElementById('customFieldsContainer');
+            const idx = container.children.length;
+            
+            const div = document.createElement('div');
+            div.className = 'custom-field-item';
+            div.style.cssText = 'display: flex; gap: 10px; margin-bottom: 10px;';
+            
+            div.innerHTML = `
+                <input type="text" placeholder="項目名" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" data-custom-label="${idx}">
+                <input type="text" placeholder="内容" style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" data-custom-value="${idx}">
+                <button class="btn" onclick="removeCustomFieldElement(this)" style="background: #ff4757; color: white; border-color: #ff4757;">削除</button>
+            `;
+            
+            container.appendChild(div);
+        }
+        
+        // カスタムフィールド削除（DOM要素）
+        function removeCustomFieldElement(btn) {
+            btn.parentElement.remove();
+        }
+        
+        // カスタムフィールド削除（既存データ）
+        function removeCustomField(idx) {
+            if (confirm('この項目を削除しますか？')) {
+                profile.custom.splice(idx, 1);
+                editProfile();
+            }
+        }
+        
+        // プロフィール保存
+        function saveProfile() {
+            const name = document.getElementById('editName').value.trim();
+            const birthday = document.getElementById('editBirthday').value;
+            const bloodType = document.getElementById('editBloodType').value;
+            const zodiac = document.getElementById('editZodiac').value.trim();
+            const height = document.getElementById('editHeight').value.trim();
+            
+            if (!name) {
+                alert('名前は必須です');
+                return;
+            }
+            
+            // カスタム項目を収集
+            const customFields = [];
+            const container = document.getElementById('customFieldsContainer');
+            const items = container.querySelectorAll('.custom-field-item');
+            
+            items.forEach((item, idx) => {
+                const labelInput = item.querySelector(`[data-custom-label]`);
+                const valueInput = item.querySelector(`[data-custom-value]`);
+                
+                if (labelInput && valueInput) {
+                    const label = labelInput.value.trim();
+                    const value = valueInput.value.trim();
+                    
+                    if (label && value) {
+                        customFields.push({ label, value });
+                    }
+                }
+            });
+            
+            // プロフィールを更新
+            profile.photo = editProfilePhoto; // アップロードされた画像を使用
+            profile.name = name;
+            profile.birthday = birthday;
+            profile.bloodType = bloodType;
+            profile.zodiac = zodiac;
+            profile.height = height;
+            profile.custom = customFields;
+            
+            // 保存
+            localStorage.setItem('diary_profile', JSON.stringify(profile));
+            
+            // サイドバーの名前と写真も更新
+            document.querySelector('.profile-name').textContent = name;
+            document.querySelector('.profile-img').src = editProfilePhoto;
+            
+            alert('プロフィールを保存しました！');
+            showProfilePage();
+        }
+        
+        // 検索機能
+        function searchArticles() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                alert('検索キーワードを入力してください');
+                return;
+            }
+            
+            // 検索キーワードを渡して記事一覧を表示
+            showArticlesList(1, query);
+        }
+        
+        // カレンダー表示
+        function renderCalendar() {
+            const year = currentYear;
+            const month = currentMonth;
+            const firstDay = new Date(year, month, 1).getDay();
+            const days = new Date(year, month + 1, 0).getDate();
+            
+            document.getElementById('calendarMonth').textContent = year + '年' + (month + 1) + '月';
+            
+            let html = '';
+            
+            // 前月の日付
+            const prevDays = new Date(year, month, 0).getDate();
+            for (let i = firstDay - 1; i >= 0; i--) {
+                html += '<div class="calendar-day other-month">' + (prevDays - i) + '</div>';
+            }
+            
+            // 当月の日付
+            for (let d = 1; d <= days; d++) {
+                const key = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                const has = articles[key] && articles[key].status === 'published';
+                const hasDraft = articles[key] && articles[key].status === 'draft';
+                
+                if (has) {
+                    html += '<div class="calendar-day has-entry" onclick="showArticle(\'' + key + '\')">' + d + '</div>';
+                } else if (hasDraft) {
+                    html += '<div class="calendar-day" style="background: #feca57; color: white; font-weight: 600; cursor: pointer;" onclick="showArticle(\'' + key + '\')">' + d + '</div>';
+                } else {
+                    html += '<div class="calendar-day">' + d + '</div>';
+                }
+            }
+            
+            // 次月の日付
+            const remain = 42 - (firstDay + days);
+            for (let d = 1; d <= remain; d++) {
+                html += '<div class="calendar-day other-month">' + d + '</div>';
+            }
+            
+            document.getElementById('calendarGrid').innerHTML = html;
+        }
+        
+        // カレンダー月移動
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+        
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+        
+        // 最新記事表示
+        function renderNewEntry() {
+            const all = Object.entries(articles)
+                .filter(([_, a]) => a.status === 'published')
+                .sort((a, b) => b[0].localeCompare(a[0]))
+                .slice(0, 5);
+            
+            if (all.length === 0) {
+                document.getElementById('newEntryList').innerHTML = 
+                    '<div style="text-align:center;color:#999;padding:20px 0;">記事がありません</div>';
+                return;
+            }
+            
+            const html = all.map(([d, a]) => 
+                '<div class="entry-item" onclick="showArticle(\'' + d + '\')">' +
+                '<div class="entry-date">' + d + '</div>' +
+                '<div class="entry-title">' + a.title + '</div>' +
+                '</div>'
+            ).join('');
+            
+            document.getElementById('newEntryList').innerHTML = html;
+        }
+        
+        // ページ切り替え
+        function showPage(id) {
+            ['dashboard', 'articlePage', 'editPage', 'listPage', 'profilePage'].forEach(p => {
+                document.getElementById(p).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+        
+        // ダッシュボードに戻る
+        function showDashboard() {
+            renderDashboard();
+            renderNewEntry();
+            renderCalendar();
+            showPage('dashboard');
+        }
+        
+        // データ保存
+        function saveData() {
+            localStorage.setItem('diary_articles', JSON.stringify(articles));
+        }
+        
+        // エクスポート
+        function exportData() {
+            const data = {
+                articles: articles,
+                profile: profile,
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'diary_backup_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // インポート
+        function importData() {
+            document.getElementById('importFile').click();
+        }
+        
+        document.getElementById('importFile').onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                try {
+                    const data = JSON.parse(ev.target.result);
+                    articles = data.articles;
+                    profile = data.profile;
+                    saveData();
+                    localStorage.setItem('diary_profile', JSON.stringify(profile));
+                    init();
+                    alert('データをインポートしました！');
+                } catch (error) {
+                    console.error('インポートエラー:', error);
+                    alert('インポートに失敗しました');
+                }
+            };
+            reader.readAsText(file);
+        };
+        
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
