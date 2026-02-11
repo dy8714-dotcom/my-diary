@@ -149,6 +149,7 @@
     <header>
         <div class="header-content">
             <h1 onclick="showDashboard()">マイ日記帳</h1>
+            <div id="customLinksContainer" style="display: flex; gap: 10px; align-items: center;"></div>
             <div class="header-actions">
                 <div class="search-group">
                     <input type="text" id="searchInput" placeholder="記事を検索..." style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; width: 180px;">
@@ -172,8 +173,8 @@
 
         <aside class="sidebar">
             <div class="sidebar-section profile">
-                <img src="https://via.placeholder.com/100" alt="Profile" class="profile-img" onclick="showProfilePage()">
-                <div class="profile-name" onclick="showProfilePage()">山田 花子</div>
+                <img id="sidebarProfileImg" src="https://via.placeholder.com/100" alt="Profile" class="profile-img" onclick="showProfilePage()">
+                <div id="sidebarProfileName" class="profile-name" onclick="showProfilePage()">山田 花子</div>
                 <div class="profile-bio">毎日を大切に記録しています</div>
             </div>
 
@@ -219,6 +220,10 @@
         let editImages = [];
         let editThumbnail = '';
         let editBlocks = []; // ブロックエディタ用
+        let customLinks = [
+            { title: '', url: '' },
+            { title: '', url: '' }
+        ]; // カスタムリンク用
         
         // サンプルデータ生成関数
         function generateSampleData() {
@@ -336,12 +341,129 @@
                 profile = JSON.parse(storedProfile);
             }
             
+            // カスタムリンクを読み込み
+            const storedLinks = localStorage.getItem('diary_custom_links');
+            if (storedLinks) {
+                customLinks = JSON.parse(storedLinks);
+            }
+            
             // 画面を描画
             renderDashboard();
             renderCalendar();
             renderNewEntry();
+            updateSidebarProfile(); // サイドバーのプロフィールを更新
+            renderCustomLinks(); // カスタムリンクを描画
             
             console.log('初期化完了');
+        }
+        
+        // カスタムリンクの描画
+        function renderCustomLinks() {
+            const container = document.getElementById('customLinksContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            customLinks.forEach((link, idx) => {
+                const linkDiv = document.createElement('div');
+                linkDiv.style.cssText = 'display: flex; align-items: center; gap: 5px;';
+                
+                if (link.title && link.url) {
+                    // リンクがある場合
+                    const linkBtn = document.createElement('a');
+                    linkBtn.href = link.url;
+                    linkBtn.target = '_blank';
+                    linkBtn.className = 'btn';
+                    linkBtn.textContent = link.title;
+                    linkBtn.style.cssText = 'text-decoration: none; background: #f0f0f0;';
+                    linkDiv.appendChild(linkBtn);
+                } else {
+                    // リンクが空の場合
+                    const emptyBtn = document.createElement('button');
+                    emptyBtn.className = 'btn';
+                    emptyBtn.textContent = 'リンク' + (idx + 1);
+                    emptyBtn.style.cssText = 'background: #f9f9f9; color: #999; border-style: dashed;';
+                    emptyBtn.onclick = () => editCustomLink(idx);
+                    linkDiv.appendChild(emptyBtn);
+                }
+                
+                // 編集ボタン
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = '✏️';
+                editBtn.style.cssText = 'background: none; border: none; cursor: pointer; font-size: 14px; padding: 0 5px;';
+                editBtn.title = '編集';
+                editBtn.onclick = () => editCustomLink(idx);
+                linkDiv.appendChild(editBtn);
+                
+                container.appendChild(linkDiv);
+            });
+        }
+        
+        // カスタムリンクの編集
+        function editCustomLink(idx) {
+            const link = customLinks[idx];
+            
+            // モーダルHTML
+            const modalHTML = `
+                <div id="linkEditModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: white; border-radius: 8px; padding: 30px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                        <h3 style="margin-bottom: 20px; font-size: 20px;">リンク編集</h3>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">タイトル（ページ名）:</label>
+                            <input type="text" id="linkTitle" value="${link.title || ''}" placeholder="例: 投資日記" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">URL:</label>
+                            <input type="url" id="linkUrl" value="${link.url || ''}" placeholder="https://..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="closeCustomLinkModal()" class="btn">キャンセル</button>
+                            <button onclick="saveCustomLink(${idx})" class="btn btn-new">保存</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // モーダルを表示
+            const modalDiv = document.createElement('div');
+            modalDiv.innerHTML = modalHTML;
+            document.body.appendChild(modalDiv);
+        }
+        
+        // カスタムリンクの保存
+        function saveCustomLink(idx) {
+            const title = document.getElementById('linkTitle').value.trim();
+            const url = document.getElementById('linkUrl').value.trim();
+            
+            customLinks[idx] = { title, url };
+            localStorage.setItem('diary_custom_links', JSON.stringify(customLinks));
+            
+            closeCustomLinkModal();
+            renderCustomLinks();
+        }
+        
+        // モーダルを閉じる
+        function closeCustomLinkModal() {
+            const modal = document.getElementById('linkEditModal');
+            if (modal) {
+                modal.parentElement.remove();
+            }
+        }
+        
+        // サイドバーのプロフィール表示を更新
+        function updateSidebarProfile() {
+            const nameElement = document.getElementById('sidebarProfileName');
+            const imgElement = document.getElementById('sidebarProfileImg');
+            
+            if (nameElement) {
+                nameElement.textContent = profile.name;
+            }
+            if (imgElement && profile.photo) {
+                imgElement.src = profile.photo;
+            }
         }
         
         // ダッシュボード表示
@@ -1203,8 +1325,7 @@
             localStorage.setItem('diary_profile', JSON.stringify(profile));
             
             // サイドバーの名前と写真も更新
-            document.querySelector('.profile-name').textContent = name;
-            document.querySelector('.profile-img').src = editProfilePhoto;
+            updateSidebarProfile();
             
             alert('プロフィールを保存しました！');
             showProfilePage();
