@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>マイ日記帳</title>
+    <title>マイ日記帳（IndexedDB版）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Noto Sans JP', sans-serif; background: #f5f5f5; }
@@ -145,7 +145,18 @@
         }
     </style>
 </head>
-<body>
+    <!-- ローディング画面 -->
+    <div id="loadingOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+        <div style="background:white;padding:30px 40px;border-radius:12px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.4);">
+            <div style="width:40px;height:40px;border:4px solid #e2e8f0;border-top:4px solid #4a90e2;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px;"></div>
+            <div style="font-size:15px;font-weight:bold;color:#4a90e2;">データを読み込み中...</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:6px;">IndexedDB を初期化しています</div>
+        </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+    <!-- 保存インジケーター -->
+    <div id="saveIndicator" style="position:fixed;bottom:14px;right:14px;background:#10b981;color:white;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:bold;opacity:0;transition:opacity 0.4s;z-index:9998;pointer-events:none;">✅ 保存しました</div>
+
     <header>
         <div class="header-content">
             <h1 onclick="showDashboard()">マイ日記帳</h1>
@@ -201,6 +212,73 @@
     <input type="file" id="importFile" accept=".json" style="display:none;">
 
     <script>
+
+        // ============================================================
+        //  IndexedDB 設定（localStorage の代替）
+        // ============================================================
+        const DB_NAME    = 'diarydb';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'appdata';
+
+        let db = null;
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = e => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME);
+                    }
+                };
+                req.onsuccess = e => resolve(e.target.result);
+                req.onerror   = e => reject(e.target.error);
+            });
+        }
+
+        function idbSet(key, value) {
+            if (!db) return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const tx    = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(value, key);
+                tx.oncomplete = () => { showSaveIndicator(); resolve(); };
+                tx.onerror    = e => reject(e.target.error);
+            });
+        }
+
+        function idbGet(key) {
+            return new Promise((resolve, reject) => {
+                const tx    = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const req   = store.get(key);
+                req.onsuccess = e => resolve(e.target.result !== undefined ? e.target.result : null);
+                req.onerror   = e => reject(e.target.error);
+            });
+        }
+
+        // 保存インジケーター
+        let _saveTimer = null;
+        function showSaveIndicator() {
+            let el = document.getElementById('saveIndicator');
+            if (!el) return;
+            el.style.opacity = '1';
+            clearTimeout(_saveTimer);
+            _saveTimer = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+        }
+
+        // ストレージ使用状況
+        async function showStorageInfo() {
+            if (navigator.storage && navigator.storage.estimate) {
+                const est   = await navigator.storage.estimate();
+                const used  = (est.usage  / 1024 / 1024).toFixed(2);
+                const quota = (est.quota  / 1024 / 1024 / 1024).toFixed(1);
+                alert('💾 ストレージ使用状況\n\n使用量: ' + used + ' MB\n最大容量: 約 ' + quota + ' GB\n\n（IndexedDB はブラウザの空き容量まで使えます）');
+            } else {
+                alert('お使いのブラウザではストレージ情報を取得できません。');
+            }
+        }
+
         let articles = {};
         let profile = {
             name: '山田 花子',
@@ -319,42 +397,84 @@
             console.log('サンプルデータを生成しました:', Object.keys(articles).length, '件');
         }
         
-        // 初期化
-        function init() {
-            console.log('初期化開始...');
-            
-            // ローカルストレージからデータを読み込み
-            const storedArticles = localStorage.getItem('diary_articles');
-            const storedProfile = localStorage.getItem('diary_profile');
-            
+        // 初期化（IndexedDB版）
+        async function init() {
+            console.log('初期化開始（IndexedDB）...');
+
+            // IndexedDB を開く
+            try {
+                db = await openDB();
+            } catch(e) {
+                console.error('IndexedDB 初期化失敗:', e);
+            }
+
+            // --- articles の読み込み ---
+            let storedArticles = null;
+            if (db) {
+                storedArticles = await idbGet('diary_articles');
+            }
+            // IndexedDBにデータがなければlocalStorageから移行
+            if (!storedArticles) {
+                const legacy = localStorage.getItem('diary_articles');
+                if (legacy) {
+                    storedArticles = JSON.parse(legacy);
+                    await idbSet('diary_articles', storedArticles);
+                    console.log('localStorage → IndexedDB へ articles を移行しました');
+                }
+            }
             if (storedArticles) {
-                articles = JSON.parse(storedArticles);
+                articles = storedArticles;
                 console.log('既存データを読み込みました:', Object.keys(articles).length, '件');
             } else {
-                // データがない場合のみサンプルデータを生成
                 console.log('データがないため、サンプルデータを生成します');
                 generateSampleData();
-                saveData();
+                await idbSet('diary_articles', articles);
             }
-            
+
+            // --- profile の読み込み ---
+            let storedProfile = null;
+            if (db) {
+                storedProfile = await idbGet('diary_profile');
+            }
+            if (!storedProfile) {
+                const legacy = localStorage.getItem('diary_profile');
+                if (legacy) {
+                    storedProfile = JSON.parse(legacy);
+                    await idbSet('diary_profile', storedProfile);
+                }
+            }
             if (storedProfile) {
-                profile = JSON.parse(storedProfile);
+                profile = storedProfile;
             }
-            
-            // カスタムリンクを読み込み
-            const storedLinks = localStorage.getItem('diary_custom_links');
+
+            // --- customLinks の読み込み ---
+            let storedLinks = null;
+            if (db) {
+                storedLinks = await idbGet('diary_custom_links');
+            }
+            if (!storedLinks) {
+                const legacy = localStorage.getItem('diary_custom_links');
+                if (legacy) {
+                    storedLinks = JSON.parse(legacy);
+                    await idbSet('diary_custom_links', storedLinks);
+                }
+            }
             if (storedLinks) {
-                customLinks = JSON.parse(storedLinks);
+                customLinks = storedLinks;
             }
-            
+
+            // ローディング画面を非表示
+            const loadingEl = document.getElementById('loadingOverlay');
+            if (loadingEl) loadingEl.style.display = 'none';
+
             // 画面を描画
             renderDashboard();
             renderCalendar();
             renderNewEntry();
-            updateSidebarProfile(); // サイドバーのプロフィールを更新
-            renderCustomLinks(); // カスタムリンクを描画
-            
-            console.log('初期化完了');
+            updateSidebarProfile();
+            renderCustomLinks();
+
+            console.log('初期化完了（IndexedDB）');
         }
         
         // カスタムリンクの描画
@@ -439,7 +559,7 @@
             const url = document.getElementById('linkUrl').value.trim();
             
             customLinks[idx] = { title, url };
-            localStorage.setItem('diary_custom_links', JSON.stringify(customLinks));
+            idbSet('diary_custom_links', JSON.parse(JSON.stringify(customLinks)));
             
             closeCustomLinkModal();
             renderCustomLinks();
@@ -1322,7 +1442,7 @@
             profile.custom = customFields;
             
             // 保存
-            localStorage.setItem('diary_profile', JSON.stringify(profile));
+            idbSet('diary_profile', JSON.parse(JSON.stringify(profile)));
             
             // サイドバーの名前と写真も更新
             updateSidebarProfile();
@@ -1443,9 +1563,9 @@
             showPage('dashboard');
         }
         
-        // データ保存
+        // データ保存（IndexedDB版）
         function saveData() {
-            localStorage.setItem('diary_articles', JSON.stringify(articles));
+            idbSet('diary_articles', JSON.parse(JSON.stringify(articles)));
         }
         
         // エクスポート
@@ -1481,7 +1601,7 @@
                     articles = data.articles;
                     profile = data.profile;
                     saveData();
-                    localStorage.setItem('diary_profile', JSON.stringify(profile));
+                    idbSet('diary_profile', JSON.parse(JSON.stringify(profile)));
                     init();
                     alert('データをインポートしました！');
                 } catch (error) {
